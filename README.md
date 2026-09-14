@@ -26,9 +26,9 @@ Windows 上的围棋工具，提供纯本地 PVE 和视频联动两种模式。�
 
 ## Windows 安装包
 
-从 [v0.2.1 下载页面](https://github.com/YangRkai/yiban/releases/tag/v0.2.1) 下载 `YiBan-Setup-0.2.1-x64.exe`，双击安装。包含 Python 和界面依赖，无需另装 Python，支持卸载和可选桌面快捷方式。安装包尚未签名。
+从 [v0.2.2 下载页面](https://github.com/YangRkai/yiban/releases/tag/v0.2.2) 下载 `YiBan-Setup-0.2.2-x64.exe`，双击安装。包含 Python 和界面依赖，无需另装 Python，支持卸载和可选桌面快捷方式。安装包尚未签名。
 
-**不包含 KataGo 引擎、模型和 GPU 运行库。** 首次启动在设置中配置 CPU 引擎，或按下文配置 GPU 引擎。CPU 模式不需要独立显卡。
+**安装包自带 KataGo CPU 引擎与轻量模型，安装后直接进入本地 PVE，无需选择引擎文件、安装 Python 或配置显卡。** GPU 作为已有自定义配置的可选加速方式。默认 CPU 模型以兼容性和响应速度为优先，不等同于高性能 GPU 大模型的棋力。
 
 ## 源码安装与启动
 

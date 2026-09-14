@@ -1,3 +1,9 @@
+# 0.2.2
+
+- 安装包自带 CPU 引擎和轻量模型，首次启动自动配置，支持离线 PVE。
+- 修正首次启动的显卡提示，未配置 GPU 时不显示无效 GPU 选项。
+- 内置配置随安装目录自动更新，自定义引擎配置保留。
+
 # 0.2.1
 
 - Windows x64 installer with bundled Python and GUI dependencies.

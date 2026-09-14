@@ -29,3 +29,6 @@ __pycache__/
 /build-work/
 /build-tools/
 /packaging/*.spec
+
+/build/
+/engine-cpu/

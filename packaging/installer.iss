@@ -1,7 +1,7 @@
 [Setup]
 AppId={{982FB3D0-46CA-4A3F-8E2C-D03C2B86E002}
 AppName=YiBan
-AppVersion=0.2.1
+AppVersion=0.2.2
 AppPublisher=YangRkai
 AppPublisherURL=https://github.com/YangRkai/yiban
 DefaultDirName={localappdata}\Programs\YiBan
@@ -10,7 +10,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist\installer
-OutputBaseFilename=YiBan-Setup-0.2.1-x64
+OutputBaseFilename=YiBan-Setup-0.2.2-x64
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern

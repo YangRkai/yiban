@@ -7,12 +7,14 @@ from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
 from engine import Engine, ROOT, LETTERS, vertex_xy
 from difficulty import LEVELS,DEFAULT
+from bundled_runtime import prepare_bundled_cpu
 
 BG = '#f3f0e9'
 INK = '#22382f'
 
 class BoardApp:
     def __init__(self, root):
+        prepare_bundled_cpu(ROOT)
         self.root = root
         self.engine = None
         self.camera = None
@@ -38,18 +40,18 @@ class BoardApp:
         self.pending_vertex = None
         self.last_input_vertex = None
         self.reply_requested = False
-        self.status = tk.StringVar(value='正在加载 KataGo · RTX 5080…')
+        self.status = tk.StringVar(value='正在加载 KataGo…')
         self.turn = tk.StringVar(value='黑棋先行')
         self.bigmove = tk.StringVar(value='—')
         self.speed = tk.StringVar(value='均衡 · 2 秒')
-        self.backend = tk.StringVar(value='正在连接显卡…')
+        self.backend = tk.StringVar(value='正在连接引擎…')
         preferred='CPU' if (ROOT/'board'/'runtime.cpu.json').exists() and not (ROOT/'board'/'runtime.json').exists() else 'GPU'
         try:
             saved=json.loads((ROOT/'board'/'compute-settings.json').read_text(encoding='utf-8'))
-            if saved.get('backend') in ('GPU','CPU'):preferred=saved['backend']
+            if saved.get('backend') in ('GPU','CPU') and (ROOT/'board'/('runtime.cpu.json' if saved['backend']=='CPU' else 'runtime.json')).exists():preferred=saved['backend']
         except (OSError,ValueError,TypeError):pass
         self.compute=tk.StringVar(value=preferred);self.active_compute=preferred
-        root.title('弈伴 · KataGo 显卡加速版')
+        root.title('弈伴 · KataGo 对弈')
         root.geometry('1380x860');root.minsize(1050,700);root.configure(bg=BG)
         style=ttk.Style();style.theme_use('clam')
         style.configure('TButton',font=('Microsoft YaHei UI',10),padding=(10,8))
@@ -98,7 +100,7 @@ class BoardApp:
         ttk.Label(general,textvariable=self.backend).pack(side='right')
         compute_bar=ttk.Frame(self.settings_host);compute_bar.pack(fill='x',padx=12,pady=4)
         ttk.Label(compute_bar,text='推理设备').pack(side='left')
-        self.compute_box=ttk.Combobox(compute_bar,textvariable=self.compute,values=['GPU','CPU'],state='readonly',width=8);self.compute_box.pack(side='left',padx=8)
+        self.compute_box=ttk.Combobox(compute_bar,textvariable=self.compute,values=(['CPU','GPU'] if (ROOT/'board'/'runtime.json').exists() else ['CPU']),state='readonly',width=8);self.compute_box.pack(side='left',padx=8)
         self.compute_box.bind('<<ComboboxSelected>>',self.change_compute)
         ttk.Button(compute_bar,text='配置 CPU 引擎',command=self.configure_cpu).pack(side='left')
         self.moves=tk.Listbox(self.settings_host,height=3)
@@ -321,7 +323,7 @@ class BoardApp:
         def action():
             self.engine.generate(color, seconds=seconds,visits=visits)
             return self.engine.snapshot()
-        self.run(action,f'GPU 正在思考 · 目标 {seconds:g} 秒…',ai=True,ai_color=color,before=before)
+        self.run(action,f'{self.active_compute} 正在思考 · 目标 {seconds:g} 秒…',ai=True,ai_color=color,before=before)
 
     def ai_color(self):return 'b' if self.ai_side.get()=='黑棋' else 'w'
     def apply_mode_layout(self):
