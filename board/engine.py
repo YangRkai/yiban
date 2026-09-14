@@ -7,8 +7,9 @@ import threading
 import json
 import os
 import time
+import sys
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent.parent
 LETTERS = 'ABCDEFGHJKLMNOPQRST'
 
 def vertex_xy(vertex, size=19):

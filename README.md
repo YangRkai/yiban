@@ -19,12 +19,18 @@ Windows 上的围棋工具，提供纯本地 PVE 和视频联动两种模式。�
 ## 环境
 
 - Windows；当前桌面点击实现依赖 Win32。
-- Python 3.11 或更高版本，安装时包含 Tcl/Tk。当前开发测试使用 Python 3.13。
+- Python 3.11 或更高版本，安装时包含 Tcl/Tk。本地打包使用 Python 3.12，CI 使用 Python 3.13。
 - 自行安装 KataGo，并下载与其兼容的模型。
 - 使用视频输入时需安装 OBS Studio，设置棋盘捕获场景并启动虚拟摄像机。
 - GPU 后端依赖由所选 KataGo 构建决定，不随本仓库提供。
 
-## 安装与启动
+## Windows 安装包
+
+从 [v0.2.1 下载页面](https://github.com/YangRkai/yiban/releases/tag/v0.2.1) 下载 `YiBan-Setup-0.2.1-x64.exe`，双击安装。包含 Python 和界面依赖，无需另装 Python，支持卸载和可选桌面快捷方式。安装包尚未签名。
+
+**不包含 KataGo 引擎、模型和 GPU 运行库。** 首次启动在设置中配置 CPU 引擎，或按下文配置 GPU 引擎。CPU 模式不需要独立显卡。
+
+## 源码安装与启动
 
 在仓库根目录运行 PowerShell：
 

@@ -24,3 +24,8 @@ __pycache__/
 /*.cmd
 /board/runtime.cpu.json
 /board/compute-settings.json
+
+/dist/
+/build-work/
+/build-tools/
+/packaging/*.spec

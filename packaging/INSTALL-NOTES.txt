@@ -1,0 +1,13 @@
+YiBan 0.2.1 - Windows x64
+
+Includes Python, Tcl/Tk, NumPy, Pillow and OpenCV runtime dependencies.
+No separate Python installation is required.
+
+KataGo executable, model and backend libraries are NOT included.
+For CPU-only play, install a CPU build of KataGo and configure its executable,
+model and GTP config in Settings > Configure CPU engine.
+OBS is needed only for video-link mode, not for local PVE.
+
+The installer is not code-signed.
+Application: https://github.com/YangRkai/yiban
+License: MIT. Third-party licenses are in the licenses directory.

@@ -8,7 +8,7 @@ class BackendSettings(unittest.TestCase):
         class TkValue:
             def get(self):raise AssertionError('worker accessed Tk variable')
         app=SimpleNamespace(active_compute='CPU',compute=TkValue(),closed=False)
-        with patch('app.Engine') as engine:
+        with patch('app.Engine') as engine, patch('pathlib.Path.exists', return_value=True):
             engine.return_value.snapshot.return_value={'stones':{}}
             self.assertEqual(BoardApp.initialize(app),{'stones':{}})
             engine.assert_called_once_with(backend='cpu')

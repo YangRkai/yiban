@@ -114,6 +114,8 @@ class BoardApp:
         self.run(self.initialize, '正在加载引擎…', initialized=True)
 
     def initialize(self):
+        config=ROOT/'board'/('runtime.cpu.json' if self.active_compute=='CPU' else 'runtime.json')
+        if not config.exists():return None
         self.engine=Engine(backend=self.active_compute.lower())
         if self.closed:
             self.engine.close()
@@ -207,6 +209,9 @@ class BoardApp:
                     self.camera.resume_after_sync()
                 if meta.get('ai') and self.camera and automation_current and self.mode.get()!='本地 PVE':
                     self.camera.on_ai(meta['ai_color'],self.last_ai,meta['before'])
+            elif meta.get('initialized'):
+                self.status.set('欢迎使用：请在设置中配置 KataGo 引擎。CPU 模式不需要显卡。')
+                if not self.settings_host.winfo_manager():self.toggle_settings()
             self.update_controls()
             want_reply=self.auto.get() or self.reply_requested or meta.get('camera') or (self.camera and self.camera.should_reply())
             if not automation_current:want_reply=False

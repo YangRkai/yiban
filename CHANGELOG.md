@@ -1,3 +1,9 @@
+# 0.2.1
+
+- Windows x64 installer with bundled Python and GUI dependencies.
+- First-run engine configuration prompt.
+- Fix worker access to Tk variables during initialization.
+
 # 更新记录
 
 ## 0.2.0 — 本地 PVE
