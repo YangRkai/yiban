@@ -1,0 +1,24 @@
+# 本机数据、引擎和第三方安装目录
+.venv/
+__pycache__/
+*.py[cod]
+/downloads/
+/cudnn/
+/fox-ai/
+/FoxGTP/
+/foxwq/
+/katago/
+/katago-cuda/
+/board/vendor/
+/board/runtime.json
+/board/camera-settings.json
+/board/game-backups/
+/board/import-position.sgf
+*.log
+/board/benchmark-*.txt
+/board/gpu-speed-result.json
+# 原始截图包含客户端界面、账号或桌面内容，发布前用授权素材替换
+/board/fixtures/
+# 本机路径和临时截图诊断脚本
+/board/check_*.py
+/*.cmd

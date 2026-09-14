@@ -1,0 +1,7 @@
+{
+  "executable": "C:/Tools/KataGo/katago.exe",
+  "model": "C:/Tools/KataGo/model.bin.gz",
+  "config": "C:/Tools/KataGo/gtp.cfg",
+  "dll_dirs": [],
+  "label": "KataGo ? ????"
+}
