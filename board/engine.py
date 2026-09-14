@@ -31,7 +31,7 @@ def parse_board(text, size=19):
     return board
 
 class Engine:
-    def __init__(self):
+    def __init__(self,backend='gpu'):
         self.history = []
         self.setup_stones={};self.setup_next='b';self.turn_override=None
         self.size = 19
@@ -39,7 +39,9 @@ class Engine:
         self.lock = threading.RLock()
         self.lines = queue.Queue()
         self.last_elapsed = 0.0
-        runtime_file = ROOT/'board'/'runtime.json'
+        if backend not in ('gpu','cpu'):raise ValueError('无效推理后端')
+        runtime_file = ROOT/'board'/('runtime.cpu.json' if backend=='cpu' else 'runtime.json')
+        if backend=='cpu' and not runtime_file.exists():raise RuntimeError('请先配置 KataGo CPU 引擎')
         runtime = json.loads(runtime_file.read_text(encoding='utf-8-sig')) if runtime_file.exists() else {}
         self.label = runtime.get('label', 'RTX 5080 · OpenCL')
         environment = os.environ.copy()
@@ -127,10 +129,13 @@ class Engine:
         self.command(f'play {color} {vertex}')
         self.history.append((color, vertex));self.turn_override=None
 
-    def generate(self, color, seconds=2.0):
+    def generate(self, color, seconds=2.0, visits=None):
         if color not in ('b','w'): raise ValueError('无效颜色')
         if not isinstance(seconds, (float, int)) or not 0.5 <= seconds <= 30:
             raise ValueError('思考时间必须在 0.5 到 30 秒之间')
+        if visits is not None:
+            if type(visits) is not int or not 1<=visits<=1000000:raise ValueError('搜索量必须是 1 到 1000000 的整数')
+            self.command(f'kata-set-param maxVisits {visits}')
         self.command(f'kata-set-param maxTime {seconds}')
         started = time.perf_counter()
         vertex = self.command(f'genmove {color}').strip()

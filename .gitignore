@@ -22,3 +22,5 @@ __pycache__/
 # 本机路径和临时截图诊断脚本
 /board/check_*.py
 /*.cmd
+/board/runtime.cpu.json
+/board/compute-settings.json

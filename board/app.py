@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
 from engine import Engine, ROOT, LETTERS, vertex_xy
+from difficulty import LEVELS,DEFAULT
 
 BG = '#f3f0e9'
 INK = '#22382f'
@@ -15,6 +16,7 @@ class BoardApp:
         self.root = root
         self.engine = None
         self.camera = None
+        self.mode=tk.StringVar(value='本地 PVE');self.pve_running=True
         self.busy = False
         self.closed = False
         self.results = queue.Queue()
@@ -31,6 +33,7 @@ class BoardApp:
             if value in ('黑棋','白棋'):saved_side=value
         except (OSError,ValueError,TypeError):pass
         self.ai_side = tk.StringVar(value=saved_side)
+        self.difficulty=tk.StringVar(value=DEFAULT)
         self.auto = tk.BooleanVar(value=False)
         self.pending_vertex = None
         self.last_input_vertex = None
@@ -40,6 +43,12 @@ class BoardApp:
         self.bigmove = tk.StringVar(value='—')
         self.speed = tk.StringVar(value='均衡 · 2 秒')
         self.backend = tk.StringVar(value='正在连接显卡…')
+        preferred='CPU' if (ROOT/'board'/'runtime.cpu.json').exists() and not (ROOT/'board'/'runtime.json').exists() else 'GPU'
+        try:
+            saved=json.loads((ROOT/'board'/'compute-settings.json').read_text(encoding='utf-8'))
+            if saved.get('backend') in ('GPU','CPU'):preferred=saved['backend']
+        except (OSError,ValueError,TypeError):pass
+        self.compute=tk.StringVar(value=preferred);self.active_compute=preferred
         root.title('弈伴 · KataGo 显卡加速版')
         root.geometry('1380x860');root.minsize(1050,700);root.configure(bg=BG)
         style=ttk.Style();style.theme_use('clam')
@@ -49,6 +58,9 @@ class BoardApp:
         tk.Label(header,text='弈伴',font=('Microsoft YaHei UI',23,'bold'),bg=BG,fg=INK).pack(side='left')
         tk.Label(header,text='实时读盘  /  AI 对弈',font=('Microsoft YaHei UI',11),bg=BG,fg='#748077').pack(side='left',padx=16)
         ttk.Button(header,text='设置 ▾',command=self.toggle_settings).pack(side='right')
+        self.difficulty_box=ttk.Combobox(header,textvariable=self.difficulty,values=list(LEVELS),state='readonly',width=8)
+        self.difficulty_box.pack(side='right',padx=10)
+        tk.Label(header,text='AI 难度',bg=BG,fg=INK).pack(side='right')
         self.notice_host=tk.Frame(root,bg=BG);self.notice_host.pack(fill='x')
         self.main_notice=tk.Label(self.notice_host,textvariable=self.status,bg='#e3e7df',fg=INK,font=('Microsoft YaHei UI',10),anchor='w',justify='left',padx=16,pady=6)
         self.main_notice.pack(fill='x',padx=16)
@@ -74,28 +86,67 @@ class BoardApp:
         self.canvas=tk.Canvas(self.board_host,bg=BG,highlightthickness=0);self.canvas.pack(fill='both',expand=True)
         self.canvas.bind('<Configure>',lambda e:self.draw());self.canvas.bind('<Button-1>',self.on_click)
         self.canvas.bind('<Motion>',self.hover);self.canvas.bind('<Leave>',lambda e:self.canvas.delete('hover'))
+        modebar=ttk.Frame(self.settings_host);modebar.pack(fill='x',padx=12,pady=4)
+        ttk.Label(modebar,text='游戏模式').pack(side='left')
+        modebox=ttk.Combobox(modebar,textvariable=self.mode,values=['本地 PVE','视频联动'],state='readonly',width=14);modebox.pack(side='left',padx=8);modebox.bind('<<ComboboxSelected>>',self.change_mode)
+        ttk.Label(modebar,text='PVE：单击落子，电脑自动应手；AI 执黑时电脑先下。').pack(side='left')
         general=ttk.Frame(self.settings_host);general.pack(fill='x',padx=12,pady=4)
         ttk.Label(general,text='路数').pack(side='left')
         self.size_box=ttk.Combobox(general,textvariable=self.size_choice,values=['9 路','13 路','19 路'],width=7,state='readonly');self.size_box.pack(side='left',padx=8);self.size_box.bind('<<ComboboxSelected>>',self.change_size)
         ttk.Label(general,text='思考时间').pack(side='left')
         self.speed_box=ttk.Combobox(general,textvariable=self.speed,values=['极速 · 1 秒','均衡 · 2 秒','深思 · 8 秒'],width=15,state='readonly');self.speed_box.pack(side='left',padx=8)
         ttk.Label(general,textvariable=self.backend).pack(side='right')
+        compute_bar=ttk.Frame(self.settings_host);compute_bar.pack(fill='x',padx=12,pady=4)
+        ttk.Label(compute_bar,text='推理设备').pack(side='left')
+        self.compute_box=ttk.Combobox(compute_bar,textvariable=self.compute,values=['GPU','CPU'],state='readonly',width=8);self.compute_box.pack(side='left',padx=8)
+        self.compute_box.bind('<<ComboboxSelected>>',self.change_compute)
+        ttk.Button(compute_bar,text='配置 CPU 引擎',command=self.configure_cpu).pack(side='left')
         self.moves=tk.Listbox(self.settings_host,height=3)
+        self.camera_settings_host=ttk.Frame(self.settings_host)
         self.open_camera()
-        recovery=tk.Frame(self.notice_host,bg=BG);recovery.pack(fill='x',padx=16,pady=4)
+        recovery=tk.Frame(self.notice_host,bg=BG);self.recovery_bar=recovery;recovery.pack(fill='x',padx=16,pady=4)
         tk.Label(recovery,text='恢复时轮到',bg=BG,fg=INK).pack(side='left')
         ttk.Combobox(recovery,textvariable=self.camera.import_turn,values=['黑棋','白棋'],width=6,state='readonly').pack(side='left',padx=8)
         ttk.Button(recovery,text='重新读盘并继续',command=self.recover_game).pack(side='left')
+        self.apply_mode_layout()
         root.protocol('WM_DELETE_WINDOW',self.close)
         self.poll_timer = root.after(80,self.poll)
         self.run(self.initialize, '正在加载引擎…', initialized=True)
 
     def initialize(self):
-        self.engine=Engine()
+        self.engine=Engine(backend=self.active_compute.lower())
         if self.closed:
             self.engine.close()
             return None
         return self.engine.snapshot()
+    def configure_cpu(self):
+        if self.busy:return
+        paths={}
+        for key,title in [('executable','选择 KataGo CPU 版可执行文件'),('model','选择 KataGo 模型'),('config','选择 CPU 版 GTP 配置')]:
+            value=filedialog.askopenfilename(parent=self.root,title=title)
+            if not value:return
+            paths[key]=value
+        paths.update(dll_dirs=[],label='KataGo · CPU')
+        (ROOT/'board'/'runtime.cpu.json').write_text(json.dumps(paths,ensure_ascii=False,indent=2),encoding='utf-8')
+        self.compute.set('CPU');self.change_compute()
+    def change_compute(self,event=None):
+        requested=self.compute.get()
+        if self.busy or requested==self.active_compute:
+            self.compute.set(self.active_compute);return
+        if requested=='CPU' and not (ROOT/'board'/'runtime.cpu.json').exists():
+            self.compute.set(self.active_compute);self.status.set('请点击“配置 CPU 引擎”，选择 CPU 版 KataGo、模型和 GTP 配置。');return
+        self.stop_auto_game()
+        stones=dict(self.stones);turn=self.next_color()
+        def switch():
+            replacement=Engine(backend=requested.lower())
+            try:
+                replacement.reset(self.board_size);replacement.import_position(stones,turn)
+            except Exception:
+                replacement.close();raise
+            previous=self.engine;self.engine=replacement
+            if previous:previous.close()
+            return replacement.snapshot()
+        self.run(switch,'正在切换到 '+requested+'…',compute=requested,clear=True)
 
     def next_color(self):
         if self.turn_override:return self.turn_override
@@ -122,6 +173,7 @@ class BoardApp:
             automation_current=not self.camera or meta.get('automation_epoch')==self.camera.automation_epoch
             self.busy=False
             if error:
+                if meta.get('compute'):self.compute.set(self.active_compute)
                 if meta.get('auto_import') and self.camera:self.camera.pause()
                 self.pending_vertex=None
                 self.reply_requested=False
@@ -129,6 +181,9 @@ class BoardApp:
                 self.status.set('操作失败：'+error)
                 if not meta.get('camera') and not meta.get('auto_import'):messagebox.showerror('操作未完成',error,parent=self.root)
             elif state is not None:
+                if meta.get('compute'):
+                    self.active_compute=meta['compute']
+                    (ROOT/'board'/'compute-settings.json').write_text(json.dumps({'backend':self.active_compute}),encoding='utf-8')
                 self.stones=state['stones'];self.history=state['history']
                 self.setup_stones=state.get('setup_stones',{});self.setup_next=state.get('setup_next','b');self.turn_override=state.get('turn_override')
                 self.board_size=state['size']
@@ -150,14 +205,17 @@ class BoardApp:
                 self.refresh()
                 if meta.get('camera') and self.camera and automation_current:
                     self.camera.resume_after_sync()
-                if meta.get('ai') and self.camera and automation_current:
+                if meta.get('ai') and self.camera and automation_current and self.mode.get()!='本地 PVE':
                     self.camera.on_ai(meta['ai_color'],self.last_ai,meta['before'])
             self.update_controls()
             want_reply=self.auto.get() or self.reply_requested or meta.get('camera') or (self.camera and self.camera.should_reply())
             if not automation_current:want_reply=False
             if self.camera and (self.camera.enabled.get() or self.camera.output.get()):
                 want_reply=want_reply and self.camera.color()==self.next_color()
-            if not error and meta.get('played') and want_reply and not self.ended():
+            if self.mode.get()=='本地 PVE':
+                want_reply=automation_current and self.pve_running and self.next_color()==self.ai_color()
+            trigger=meta.get('played') or (self.mode.get()=='本地 PVE' and (meta.get('initialized') or meta.get('new_pve')))
+            if not error and trigger and want_reply and not self.ended():
                 self.reply_requested=False
                 self.ai()
         except queue.Empty:pass
@@ -167,6 +225,8 @@ class BoardApp:
         for b in self.buttons:b.configure(state='disabled' if self.busy or not self.engine else 'normal')
         self.color.configure(state='disabled' if self.busy else 'readonly')
         self.speed_box.configure(state='disabled' if self.busy else 'readonly')
+        self.difficulty_box.configure(state='disabled' if self.busy else 'readonly')
+        self.compute_box.configure(state='disabled' if self.busy else 'readonly')
         self.size_box.configure(state='disabled' if self.busy or not self.engine else 'readonly')
 
     def refresh(self):
@@ -219,6 +279,7 @@ class BoardApp:
                 self.canvas.create_oval(x-s*.4,y-s*.4,x+s*.4,y+s*.4,outline='#547061',width=2,tags='hover')
 
     def on_click(self,event):
+        if self.mode.get()=='本地 PVE' and (not self.pve_running or self.next_color()==self.ai_color()):return
         if not self.engine or self.ended():return
         loc=self.location(event)
         if loc:
@@ -242,18 +303,41 @@ class BoardApp:
         self.run(action,'正在录入 '+vertex+'…',played=True)
 
     def pass_move(self):
+        if self.mode.get()=='本地 PVE' and (not self.pve_running or self.next_color()==self.ai_color()):return
         if not self.ended():self.play('pass')
 
     def ai(self):
         if self.ended() or self.busy:return
+        if self.mode.get()=='本地 PVE' and self.next_color()!=self.ai_color():return
         color=self.next_color()
         before=dict(self.stones)
         seconds={'极速 · 1 秒':1.0,'均衡 · 2 秒':2.0,'深思 · 8 秒':8.0}[self.speed.get()]
+        visits=LEVELS[self.difficulty.get()]
         def action():
-            self.engine.generate(color, seconds=seconds)
+            self.engine.generate(color, seconds=seconds,visits=visits)
             return self.engine.snapshot()
         self.run(action,f'GPU 正在思考 · 目标 {seconds:g} 秒…',ai=True,ai_color=color,before=before)
 
+    def ai_color(self):return 'b' if self.ai_side.get()=='黑棋' else 'w'
+    def apply_mode_layout(self):
+        pve=self.mode.get()=='本地 PVE'
+        if pve:
+            if str(self.video_host) in self.body.panes():self.body.forget(self.video_host)
+            self.camera_settings_host.pack_forget();self.recovery_bar.pack_forget()
+            self.camera.notice.pack_forget()
+        else:
+            if str(self.video_host) not in self.body.panes():self.body.insert(0,self.video_host,weight=1)
+            self.camera_settings_host.pack(fill='x')
+            self.recovery_bar.pack(fill='x',padx=16,pady=4)
+            self.camera.notice.pack(fill='x',padx=8,pady=4)
+        self.start_auto_button.configure(text='继续对弈' if pve else '▶ 开始自动')
+    def change_mode(self,event=None):
+        self.stop_auto_game();self.apply_mode_layout()
+        if self.mode.get()=='本地 PVE':
+            self.camera.stop.set();self.pve_running=True
+            if self.engine and not self.busy and self.next_color()==self.ai_color() and not self.ended():self.ai()
+        else:
+            self.camera.start()
     def toggle_settings(self):
         if self.settings_host.winfo_manager():self.settings_host.pack_forget()
         else:self.settings_host.pack(fill='x',before=self.body,padx=16,pady=4)
@@ -264,6 +348,10 @@ class BoardApp:
         self.camera=CameraPanel(self)
 
     def start_auto_game(self):
+        if self.mode.get()=='本地 PVE':
+            self.pve_running=True
+            if self.engine and not self.busy and not self.ended() and self.next_color()==self.ai_color():self.ai()
+            self.status.set('PVE 进行中：轮到你时单击棋盘落子。');return
         if self.busy or not self.engine:return
         if not self.camera:self.open_camera()
         self.camera.run_mode.set('读盘并点击目标')
@@ -273,6 +361,7 @@ class BoardApp:
             if not self.settings_host.winfo_manager():self.toggle_settings()
 
     def stop_auto_game(self):
+        self.pve_running=False
         self.auto.set(False);self.reply_requested=False
         if self.camera:self.camera.pause()
         self.status.set('自动下棋已停止。')
@@ -302,8 +391,9 @@ class BoardApp:
     def undo(self):
         if not self.history:return
         if self.camera:self.camera.pause()
+        count=2 if self.mode.get()=='本地 PVE' and len(self.history)>=2 and self.history[-1][0]==self.ai_color() else 1
         def action():
-            self.engine.undo()
+            for _ in range(count):self.engine.undo()
             return self.engine.snapshot()
         self.run(action,'正在悔棋…',clear=True)
 
@@ -319,7 +409,8 @@ class BoardApp:
                 path.write_text(json.dumps(previous,ensure_ascii=False,indent=2),encoding='utf-8')
             self.engine.reset(self.board_size)
             return self.engine.snapshot()
-        self.run(action,'正在创建新对局…',clear=True)
+        self.pve_running=True
+        self.run(action,'正在创建新对局…',clear=True,new_pve=True)
 
     def change_size(self,event=None):
         size=int(self.size_choice.get().split()[0])
@@ -334,7 +425,7 @@ class BoardApp:
         def action():
             self.engine.reset(size)
             return self.engine.snapshot()
-        self.run(action,f'正在切换到 {size} 路…',clear=True)
+        self.run(action,f'正在切换到 {size} 路…',clear=True,new_pve=True)
 
     def save(self):
         path=filedialog.asksaveasfilename(parent=self.root,title='保存棋谱',defaultextension='.sgf',filetypes=[('SGF 棋谱','*.sgf')],initialfile='KataGo-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'.sgf')

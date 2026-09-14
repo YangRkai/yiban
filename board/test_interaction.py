@@ -9,10 +9,12 @@ from app import BoardApp
 @unittest.skipUnless((Path(__file__).parent/'runtime.json').exists(),'Configure local KataGo to run integration tests')
 class DoubleClickFlow(unittest.TestCase):
     def setUp(self):
+        errors=patch('app.messagebox.showerror');errors.start();self.addCleanup(errors.stop)
         self.devices_patch=patch('video_sources.list_sources',return_value=[]);self.devices_patch.start()
         self.save_patch=patch('camera_panel.CameraPanel.save_settings');self.save_patch.start()
         self.root=tk.Tk()
         self.app=BoardApp(self.root)
+        self.app.mode.set('视频联动')
         self.root.title('弈伴交互自动测试')
         self.wait_ready()
         self.app.speed.set('极速 · 1 秒')
@@ -40,6 +42,22 @@ class DoubleClickFlow(unittest.TestCase):
         self.click(5000)
         self.wait_ready()
         self.assertEqual(len(self.app.history),2)
+    def test_pve_replies_and_undo_returns_to_player(self):
+        self.app.mode.set('本地 PVE');self.app.ai_side.set('白棋');self.app.pve_running=True
+        self.app.play('D4');self.wait_ready()
+        self.assertEqual(len(self.app.history),2)
+        self.assertEqual(self.app.history[-1][0],'w')
+        self.app.undo();self.wait_ready()
+        self.assertEqual(self.app.history,[])
+        self.assertEqual(self.app.next_color(),'b')
+    def test_pve_black_opens_new_game_without_camera(self):
+        self.app.mode.set('本地 PVE');self.app.ai_side.set('黑棋')
+        self.app.new_game();self.wait_ready()
+        self.assertEqual(len(self.app.history),1)
+        self.assertEqual(self.app.history[0][0],'b')
+        self.assertEqual(self.app.next_color(),'w')
+        self.assertFalse(self.app.camera.enabled.get())
+        self.assertFalse(self.app.camera.output.get())
     def test_stop_during_camera_move_does_not_schedule_ai(self):
         panel=self.app.camera;panel.side.set('白棋');panel.enabled.set(True)
         self.app.play_camera('D4',{'D4':'b'})

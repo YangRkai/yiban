@@ -38,7 +38,7 @@ class CameraPanel:
         if self.embedded:self.window.pack(fill='both',expand=True)
         else:self.window.title('弈伴 · 视频读盘');self.window.geometry('950x760')
         self.closed=False
-        settings=app.settings_host if self.embedded else self.window
+        settings=app.camera_settings_host if self.embedded else self.window
         notices=app.notice_host if self.embedded else self.window
         self.frame=None;self.frame_time=0;self.lock=threading.Lock();self.stop=threading.Event();self.thread=None
         self.reader=None;self.gate=StableBoard(.6);self.target=None;self.rejected=None;self.last_sent=None
@@ -102,15 +102,19 @@ class CameraPanel:
         try:
             saved=json.loads(self.config_path.read_text(encoding='utf-8'))
             self.saved_input=saved.get('input')
+            if hasattr(app,'difficulty'):
+                from difficulty import LEVELS
+                if saved.get('difficulty') in LEVELS:app.difficulty.set(saved['difficulty'])
             if saved.get('device') in self.devices:self.device.set(saved['device'])
             if not hasattr(app,'ai_side') and saved.get('side') in ('黑棋','白棋'):self.side.set(saved['side'])
             if saved.get('turn') in ('黑棋','白棋'):self.import_turn.set(saved['turn'])
             self.restore_pending=True
-            if self.device.get():self.window.after(200,self.start)
+            if self.device.get() and (not hasattr(app,'mode') or app.mode.get()!='本地 PVE'):self.window.after(200,self.start)
         except (OSError,ValueError,TypeError):pass
         self.timer=self.window.after(150,self.tick)
     def save_settings(self):
         data={'device':self.device.get(),'side':self.side.get(),'turn':self.import_turn.get(),'input':self.saved_input}
+        if hasattr(self.app,'difficulty'):data['difficulty']=self.app.difficulty.get()
         self.config_path.write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')
     def color(self):return {'黑棋':'b','白棋':'w'}.get(self.side.get())
     def start_auto(self):
@@ -303,7 +307,9 @@ class CameraPanel:
                     self.app.status.set(self.note.get())
             if not self.enabled.get() and not self.output.get():self.run_status.set('已停止')
             import ctypes
-            if ctypes.windll.user32.GetAsyncKeyState(0x77):self.pause()
+            if ctypes.windll.user32.GetAsyncKeyState(0x77):
+                if hasattr(self.app,'mode') and self.app.mode.get()=='本地 PVE':self.app.stop_auto_game()
+                else:self.pause()
             frame,stamp=self.latest()
             if frame is None:
                 if self.source_error:self.source_status.set('连接失败：'+self.source_error)
