@@ -12,6 +12,7 @@ from bundled_runtime import prepare_bundled_cpu
 from coaching import LessonStore
 from coach_ui import CoachWindow
 from app_layout import build_layout
+from territory_ui import TerritoryOverlay
 
 BG = '#f4f3ee'
 INK = '#243c33'
@@ -60,6 +61,7 @@ class BoardApp:
         except (OSError,ValueError,TypeError):pass
         self.compute=tk.StringVar(value=preferred);self.active_compute=preferred
         build_layout(self)
+        self.territory=TerritoryOverlay(self,ROOT)
         modebar=ttk.Frame(self.settings_host);modebar.pack(fill='x',padx=12,pady=4)
         ttk.Label(modebar,text='游戏模式').pack(side='left')
         modebox=ttk.Combobox(modebar,textvariable=self.mode,values=['本地 PVE','视频联动'],state='readonly',width=14);modebox.pack(side='left',padx=8);modebox.bind('<<ComboboxSelected>>',self.change_mode)
@@ -264,6 +266,7 @@ class BoardApp:
         if self.history and self.history[-1][1] in self.stones:
             a,b=vertex_xy(self.history[-1][1],self.board_size);x,y=x0+a*s,y0+b*s;rr=s*.14
             c.create_oval(x-rr,y-rr,x+rr,y+rr,outline='#e75939',width=2)
+        if getattr(self,'territory',None):self.territory.paint()
 
     def location(self,event):
         x0,y0,s=self.geometry();a=round((event.x-x0)/s);b=round((event.y-y0)/s)
@@ -452,6 +455,7 @@ class BoardApp:
         except OSError as e:messagebox.showerror('保存失败',str(e),parent=self.root)
 
     def close(self):
+        self.territory.close()
         if self.coach_window and not self.coach_window.closed:self.coach_window.close()
         self.closed=True
         if self.camera:self.camera.close()

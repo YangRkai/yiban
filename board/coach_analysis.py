@@ -11,13 +11,13 @@ from coaching import verified_gap
 
 
 class Analysis:
-    def __init__(self, root, cancel):
+    def __init__(self, root, cancel, purpose='coach'):
         self.cancel=cancel;self.root=root
         runtime=json.loads((root/'board/runtime.cpu.json').read_text(encoding='utf-8-sig'))
         self.model=runtime['model'];self.lines=queue.Queue()
-        config=root/'board/coach-analysis.cfg'
+        config=root/'board'/f'{purpose}-analysis.cfg'
         config.write_text('numAnalysisThreads = 1\nnumSearchThreads = 2\nmaxVisits = 32\nreportAnalysisWinratesAs = BLACK\nanalysisPVLen = 6\nlogToStderr = false\n',encoding='utf-8')
-        self.log=open(root/'board/coach-analysis.log','a',encoding='utf-8')
+        self.log=open(root/'board'/f'{purpose}-analysis.log','a',encoding='utf-8')
         self.process=subprocess.Popen([runtime['executable'],'analysis','-model',runtime['model'],'-config',str(config)],
             cwd=Path(runtime['executable']).parent,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=self.log,
             text=True,encoding='utf-8',creationflags=subprocess.CREATE_NO_WINDOW)
@@ -26,13 +26,17 @@ class Analysis:
             self.lines.put(None)
         threading.Thread(target=pump,daemon=True).start()
         self.serial=0
-    def query(self, game, moves, color, visits, allowed=None):
+    def query(self, game, moves, color, visits, allowed=None, ownership=False):
         if self.cancel.is_set():raise RuntimeError('分析已取消')
         self.serial+=1
         request=dict(id=str(self.serial),moves=moves,initialPlayer='B',rules='chinese',komi=7.5,
             boardXSize=game['size'],boardYSize=game['size'],maxVisits=visits,
             overrideSettings=dict(reportAnalysisWinratesAs='BLACK',wideRootNoise=0.0))
         if allowed:request['allowMoves']=[dict(player=color.upper(),moves=[allowed],untilDepth=1)]
+        if ownership:
+            request['includeOwnership']=True
+            request['initialPlayer']=game.get('setup_next','b').upper()
+            request['initialStones']=[[c.upper(),v] for v,c in game.get('setup_stones',{}).items()]
         self.process.stdin.write(json.dumps(request)+'\n');self.process.stdin.flush()
         deadline=time.monotonic()+90
         while time.monotonic()<deadline:

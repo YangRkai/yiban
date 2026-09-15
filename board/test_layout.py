@@ -15,7 +15,7 @@ class LayoutTests(unittest.TestCase):
         try:
             build_layout(app);root.geometry('1050x720');root.update()
             self.assertGreater(app.canvas.winfo_width(),400)
-            for widget in app.buttons+[app.lesson_button,app.main_notice]:
+            for widget in app.buttons+[app.lesson_button,app.main_notice,app.score_button]:
                 self.assertTrue(widget.winfo_ismapped())
                 self.assertLessEqual(widget.winfo_rooty()+widget.winfo_height(),root.winfo_rooty()+root.winfo_height())
             self.assertEqual(app.settings_window.state(),'withdrawn')
