@@ -1,4 +1,4 @@
-YiBan 0.3.0 for Windows x64
+YiBan 0.3.1 for Windows x64
 Includes Python, GUI dependencies, KataGo 1.16.4 Eigen CPU engine and g170e-b10c128-s1141046784-d204142634 model.
 Install and play local PVE offline. No engine configuration or GPU required.
 GPU is optional for custom installations. OBS is optional for video mode.
@@ -6,3 +6,4 @@ Third-party licenses are included. Installer is unsigned.
 https://github.com/YangRkai/yiban
 
 One lesson per game: local records, independent retry, verified PV playback, next-day same-position retest, and AI export. Finite CPU estimates are not guaranteed correct. Retrying a known position does not prove transfer of learning.
+

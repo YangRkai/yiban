@@ -34,7 +34,7 @@ Windows 上的围棋工具，提供纯本地 PVE 和视频联动两种模式。�
 
 ## Windows 安装包
 
-从 [v0.3.0 下载页面](https://github.com/YangRkai/yiban/releases/tag/v0.3.0) 下载 `YiBan-Setup-0.3.0-x64.exe`，双击安装。包含 Python 和界面依赖，无需另装 Python，支持卸载和可选桌面快捷方式。安装包尚未签名。
+从 [v0.3.1 下载页面](https://github.com/YangRkai/yiban/releases/tag/v0.3.1) 下载 `YiBan-Setup-0.3.1-x64.exe`，双击安装。包含 Python 和界面依赖，无需另装 Python，支持卸载和可选桌面快捷方式。安装包尚未签名。
 
 **安装包自带 KataGo CPU 引擎与轻量模型，安装后直接进入本地 PVE，无需选择引擎文件、安装 Python 或配置显卡。** GPU 作为已有自定义配置的可选加速方式。默认 CPU 模型以兼容性和响应速度为优先，不等同于高性能 GPU 大模型的棋力。
 
@@ -122,3 +122,10 @@ Copy-Item board/runtime.example.json board/runtime.json
 贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题见 [SECURITY.md](SECURITY.md)。
 
 本项目自行维护的源码采用 [MIT License](LICENSE)。第三方程序、模型和素材不因此获得再分发授权。
+
+
+## 视觉设计
+
+[主界面 Figma 稿](https://www.figma.com/design/ugjcJnfTompNLTHhkMZOWt?node-id=2-129) · [每局一题设计稿](https://www.figma.com/design/ugjcJnfTompNLTHhkMZOWt?node-id=6-20)
+
+0.3.1 将棋盘与操作栏分开，保留顶部状态提示。引擎和视频配置放入独立可滚动设置窗口。教学窗口采用大棋盘加分步操作栏。使用 Windows 原生字体和控件适配设计稿，不改变棋力和教学判断规则。

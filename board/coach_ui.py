@@ -8,6 +8,7 @@ import zipfile
 from engine import LETTERS, vertex_xy
 from coach_analysis import analyze_game
 from coaching import game_sgf
+from coach_layout import build_coach_layout
 
 
 class CoachWindow:
@@ -16,35 +17,19 @@ class CoachWindow:
         self.lesson=None;self.revealed=False;self.submitted=False;self.selection=None
         self.cancel=threading.Event();self.events=queue.Queue();self.closed=False
         self.window=tk.Toplevel(app.root);self.window.title('每局一题 · 独立重试与复测')
-        self.window.geometry('740x800');self.window.minsize(560,650)
-        self.message=tk.StringVar(value='分析当前局，或取一道到期的原题复测。复测不等于已学会迁移。')
-        ttk.Label(self.window,textvariable=self.message,wraplength=690).pack(fill='x',padx=12,pady=10)
-        bar=ttk.Frame(self.window);bar.pack(fill='x',padx=12)
-        self.analyze_button=ttk.Button(bar,text='分析本局 · 找一题',command=self.analyze);self.analyze_button.pack(side='left')
-        self.review_button=ttk.Button(bar,text='隔日复测',command=self.review);self.review_button.pack(side='left',padx=5)
-        ttk.Button(bar,text='导出给 AI',command=self.export).pack(side='right')
+        self.message=tk.StringVar(value='分析所选对局，或取一道到期的原题复测。复测不等于已学会迁移。')
+        build_coach_layout(self)
         self.saved_games={}
         if game:self.saved_games['打开窗口时的本局']=game
         for path in sorted(store.folder.glob('game-*.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:50]:
             saved=store.read(path.name)
             if saved and saved.get('history'):
                 self.saved_games[f"{saved['game_id'][:8]} · {len(saved['history'])} 手 · {saved['size']} 路"]=saved
-        self.game_choice=ttk.Combobox(self.window,values=list(self.saved_games),state='readonly')
-        self.game_choice.pack(fill='x',padx=12,pady=5)
+        self.game_choice.configure(values=list(self.saved_games))
         if self.saved_games:self.game_choice.current(0)
         self.game_choice.bind('<<ComboboxSelected>>',self.select_game)
-        self.canvas=tk.Canvas(self.window,bg='#dfb976',highlightthickness=0)
-        self.canvas.pack(fill='both',expand=True,padx=12,pady=10)
         self.canvas.bind('<Configure>',lambda e:self.draw());self.canvas.bind('<Button-1>',self.choose)
-        bottom=ttk.Frame(self.window);bottom.pack(fill='x',padx=12,pady=8)
-        self.submit=ttk.Button(bottom,text='提交我的下法',command=self.answer);self.submit.pack(side='left')
-        self.reveal=ttk.Button(bottom,text='看建议与变化',command=self.show_answer);self.reveal.pack(side='left',padx=4)
-        self.branch=tk.StringVar(value='建议变化')
-        self.branch_box=ttk.Combobox(bottom,textvariable=self.branch,values=['建议变化','实战首手变化'],state='disabled',width=13)
-        self.branch_box.pack(side='left');self.branch_box.bind('<<ComboboxSelected>>',lambda e:self.reset_frames())
-        self.previous=ttk.Button(bottom,text='上一步',command=lambda:self.step(-1));self.previous.pack(side='left')
-        self.next=ttk.Button(bottom,text='下一步',command=lambda:self.step(1));self.next.pack(side='left')
-        ttk.Label(self.window,text='分析基于打开窗口时的棋谱快照。关闭窗口可取消分析，不影响原对局。',wraplength=690).pack(pady=(0,8))
+        self.branch_box.bind('<<ComboboxSelected>>',lambda e:self.reset_frames())
         self.window.protocol('WM_DELETE_WINDOW',self.close)
         self.timer=self.window.after(100,self.poll);self.controls(False)
     def controls(self, ready):
@@ -105,7 +90,11 @@ class CoachWindow:
         spacing=max(1,(min(w,h)-60)/(size-1));return (w-spacing*(size-1))/2,(h-spacing*(size-1))/2,spacing
     def draw(self):
         self.canvas.delete('all')
-        if not self.lesson:return
+        if not self.lesson:
+            self.canvas.create_text(self.canvas.winfo_width()/2,self.canvas.winfo_height()/2,
+                text='选择一局棋，点击右侧“分析所选对局”\n找到可复核的问题后，棋盘会显示在这里。',
+                fill='#665333',font=('Microsoft YaHei UI',11),justify='center',width=max(100,self.canvas.winfo_width()-40))
+            return
         n=self.lesson['size'];x,y,s=self.geometry()
         for i in range(n):
             self.canvas.create_line(x,y+i*s,x+(n-1)*s,y+i*s,fill='#665333')

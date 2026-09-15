@@ -11,9 +11,10 @@ from difficulty import LEVELS,DEFAULT
 from bundled_runtime import prepare_bundled_cpu
 from coaching import LessonStore
 from coach_ui import CoachWindow
+from app_layout import build_layout
 
-BG = '#f3f0e9'
-INK = '#22382f'
+BG = '#f4f3ee'
+INK = '#243c33'
 
 class BoardApp:
     def __init__(self, root):
@@ -58,44 +59,7 @@ class BoardApp:
             if saved.get('backend') in ('GPU','CPU') and (ROOT/'board'/('runtime.cpu.json' if saved['backend']=='CPU' else 'runtime.json')).exists():preferred=saved['backend']
         except (OSError,ValueError,TypeError):pass
         self.compute=tk.StringVar(value=preferred);self.active_compute=preferred
-        root.title('弈伴 · KataGo 对弈')
-        root.geometry('1380x860');root.minsize(1050,700);root.configure(bg=BG)
-        style=ttk.Style();style.theme_use('clam')
-        style.configure('TButton',font=('Microsoft YaHei UI',10),padding=(10,8))
-        style.configure('TCombobox',font=('Microsoft YaHei UI',10),padding=4)
-        header=tk.Frame(root,bg=BG);header.pack(fill='x',padx=20,pady=(12,6))
-        tk.Label(header,text='弈伴',font=('Microsoft YaHei UI',23,'bold'),bg=BG,fg=INK).pack(side='left')
-        tk.Label(header,text='实时读盘  /  AI 对弈',font=('Microsoft YaHei UI',11),bg=BG,fg='#748077').pack(side='left',padx=16)
-        ttk.Button(header,text='设置 ▾',command=self.toggle_settings).pack(side='right')
-        self.difficulty_box=ttk.Combobox(header,textvariable=self.difficulty,values=list(LEVELS),state='readonly',width=8)
-        self.difficulty_box.pack(side='right',padx=10)
-        tk.Label(header,text='AI 难度',bg=BG,fg=INK).pack(side='right')
-        ttk.Button(header,text='每局一题 / 复测',command=self.open_coach).pack(side='right',padx=8)
-        self.notice_host=tk.Frame(root,bg=BG);self.notice_host.pack(fill='x')
-        self.main_notice=tk.Label(self.notice_host,textvariable=self.status,bg='#e3e7df',fg=INK,font=('Microsoft YaHei UI',10),anchor='w',justify='left',padx=16,pady=6)
-        self.main_notice.pack(fill='x',padx=16)
-        self.main_notice.bind('<Configure>',lambda e:self.main_notice.configure(wraplength=max(200,e.width-32)))
-        self.settings_host=ttk.Frame(root)
-        self.footer=tk.Frame(root,bg=BG);self.footer.pack(side='bottom',fill='x',padx=20,pady=12)
-        tk.Label(self.footer,text='AI 执子',bg=BG,fg=INK).pack(side='left')
-        self.color=ttk.Combobox(self.footer,textvariable=self.ai_side,values=['黑棋','白棋'],width=6,state='readonly');self.color.pack(side='left',padx=8)
-        self.start_auto_button=ttk.Button(self.footer,text='▶ 开始自动',command=self.start_auto_game);self.start_auto_button.pack(side='left',padx=4)
-        ttk.Button(self.footer,text='■ 停止（F8）',command=self.stop_auto_game).pack(side='left',padx=4)
-        self.buttons=[self.start_auto_button]
-        for label,command in [('新开一局',self.new_game),('悔棋',self.undo),('停一手',self.pass_move),('保存棋谱',self.save)]:
-            button=ttk.Button(self.footer,text=label,command=command);button.pack(side='left',padx=4);self.buttons.append(button)
-        self.ai_button=ttk.Button(self.footer,text='AI 下这一手',command=self.ai);self.ai_button.pack(side='right');self.buttons.append(self.ai_button)
-        self.body=ttk.Panedwindow(root,orient='horizontal');self.body.pack(fill='both',expand=True,padx=16,pady=8)
-        self.video_host=tk.Frame(self.body,bg=BG);self.board_host=tk.Frame(self.body,bg=BG)
-        self.body.add(self.video_host,weight=1);self.body.add(self.board_host,weight=1)
-        tk.Label(self.video_host,text='实时视频棋盘',bg=BG,fg=INK,font=('Microsoft YaHei UI',12,'bold')).pack(anchor='w',padx=8,pady=6)
-        board_header=tk.Frame(self.board_host,bg=BG);board_header.pack(fill='x',padx=8,pady=6)
-        tk.Label(board_header,text='AI 棋盘',bg=BG,fg=INK,font=('Microsoft YaHei UI',12,'bold')).pack(side='left')
-        tk.Label(board_header,textvariable=self.turn,bg=BG,fg=INK).pack(side='left',padx=16)
-        tk.Label(board_header,textvariable=self.bigmove,bg=BG,fg=INK,font=('Consolas',20,'bold')).pack(side='right')
-        self.canvas=tk.Canvas(self.board_host,bg=BG,highlightthickness=0);self.canvas.pack(fill='both',expand=True)
-        self.canvas.bind('<Configure>',lambda e:self.draw());self.canvas.bind('<Button-1>',self.on_click)
-        self.canvas.bind('<Motion>',self.hover);self.canvas.bind('<Leave>',lambda e:self.canvas.delete('hover'))
+        build_layout(self)
         modebar=ttk.Frame(self.settings_host);modebar.pack(fill='x',padx=12,pady=4)
         ttk.Label(modebar,text='游戏模式').pack(side='left')
         modebox=ttk.Combobox(modebar,textvariable=self.mode,values=['本地 PVE','视频联动'],state='readonly',width=14);modebox.pack(side='left',padx=8);modebox.bind('<<ComboboxSelected>>',self.change_mode)
@@ -232,7 +196,7 @@ class BoardApp:
                     self.last_ai=None; self.bigmove.set('—')
                 if self.ended():self.status.set('对局结束：AI 认输' if self.history[-1][1]=='resign' else '双方停一手，可保存棋谱。')
                 elif meta.get('ai'):self.status.set(f'本地 AI 已生成 {self.last_ai} · 实际思考 {self.engine.last_elapsed:.2f} 秒 · {self.engine.label}')
-                else:self.status.set('单击落子 · 再点刚落下的棋子，AI 下下一手。')
+                else:self.status.set('单击棋盘落子，电脑自动应手。' if self.mode.get()=='本地 PVE' else '单击落子 · 再点刚落下的棋子，AI 下下一手。')
                 if meta.get('played'):
                     self.last_input_vertex=self.pending_vertex
                     self.pending_vertex=None
@@ -244,7 +208,7 @@ class BoardApp:
                     self.camera.on_ai(meta['ai_color'],self.last_ai,meta['before'])
             elif meta.get('initialized'):
                 self.status.set('欢迎使用：请在设置中配置 KataGo 引擎。CPU 模式不需要显卡。')
-                if not self.settings_host.winfo_manager():self.toggle_settings()
+                if self.settings_window.state()=='withdrawn':self.toggle_settings()
             self.update_controls()
             want_reply=self.auto.get() or self.reply_requested or meta.get('camera') or (self.camera and self.camera.should_reply())
             if not automation_current:want_reply=False
@@ -377,8 +341,8 @@ class BoardApp:
         else:
             self.camera.start()
     def toggle_settings(self):
-        if self.settings_host.winfo_manager():self.settings_host.pack_forget()
-        else:self.settings_host.pack(fill='x',before=self.body,padx=16,pady=4)
+        if self.settings_window.state()!='withdrawn':self.settings_window.withdraw()
+        else:self.settings_window.deiconify();self.settings_window.lift()
 
     def open_camera(self):
         if self.camera:return
@@ -396,7 +360,7 @@ class BoardApp:
         self.camera.start_auto()
         self.status.set(self.camera.run_status.get())
         if not self.camera.enabled.get() or not self.camera.output.get():
-            if not self.settings_host.winfo_manager():self.toggle_settings()
+            if self.settings_window.state()=='withdrawn':self.toggle_settings()
 
     def stop_auto_game(self):
         self.pve_running=False

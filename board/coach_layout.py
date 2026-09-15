@@ -1,0 +1,40 @@
+import tkinter as tk
+from tkinter import ttk
+from app_layout import BG, INK, MUTED, PAPER, TINT
+
+
+def build_coach_layout(view):
+    w=view.window;w.configure(bg=BG);w.minsize(980,720)
+    parent=view.app.root
+    x=max(0,min(w.winfo_screenwidth()-1160,parent.winfo_rootx()+(parent.winfo_width()-1160)//2))
+    y=max(0,min(w.winfo_screenheight()-860,parent.winfo_rooty()+20))
+    w.geometry(f'1160x820+{x}+{y}')
+    header=tk.Frame(w,bg=BG);header.pack(fill='x',padx=24,pady=(18,12))
+    tk.Label(header,text='每局一题',font=('Microsoft YaHei UI',23,'bold'),bg=BG,fg=INK).pack(side='left')
+    tk.Label(header,text='先自己试，再看变化',font=('Microsoft YaHei UI',10),bg=BG,fg=MUTED).pack(side='left',padx=18)
+    ttk.Button(header,text='导出给 AI',command=view.export).pack(side='right')
+    notice=tk.Label(w,textvariable=view.message,bg=TINT,fg=INK,padx=14,pady=10,anchor='w',justify='left',font=('Microsoft YaHei UI',10))
+    notice.pack(fill='x',padx=24);notice.bind('<Configure>',lambda e:notice.configure(wraplength=max(200,e.width-28)))
+    content=tk.Frame(w,bg=BG);content.pack(fill='both',expand=True,padx=24,pady=(16,20))
+    content.columnconfigure(0,weight=1);content.columnconfigure(1,minsize=270);content.rowconfigure(0,weight=1)
+    board=tk.Frame(content,bg=PAPER);board.grid(row=0,column=0,sticky='nsew',padx=(0,18))
+    tk.Label(board,text='练习棋盘',font=('Microsoft YaHei UI',12,'bold'),bg=PAPER,fg=INK).pack(anchor='w',padx=16,pady=(14,8))
+    view.game_choice=ttk.Combobox(board,state='readonly');view.game_choice.pack(fill='x',padx=16,pady=(0,8))
+    tk.Label(board,text='选择棋盘上的点，再提交。原对局保持不变。',font=('Microsoft YaHei UI',9),bg=PAPER,fg=MUTED).pack(side='bottom',anchor='w',padx=16,pady=12)
+    view.canvas=tk.Canvas(board,bg='#ddbb85',highlightthickness=0);view.canvas.pack(fill='both',expand=True,padx=16)
+    side=tk.Frame(content,bg=BG,width=280);side.grid(row=0,column=1,sticky='ns')
+    card=tk.Frame(side,bg=PAPER,padx=16,pady=16);card.pack(fill='x')
+    tk.Label(card,text='先独立试一手',font=('Microsoft YaHei UI',15,'bold'),bg=PAPER,fg=INK).pack(anchor='w',pady=(0,12))
+    view.analyze_button=ttk.Button(card,text='分析所选对局 · 找一题',command=view.analyze);view.analyze_button.pack(fill='x',pady=(0,10))
+    view.submit=ttk.Button(card,text='提交我的下法',style='Primary.TButton',command=view.answer);view.submit.pack(fill='x',pady=(0,10))
+    view.reveal=ttk.Button(card,text='看建议与变化',command=view.show_answer);view.reveal.pack(fill='x',pady=(0,16))
+    tk.Label(card,text='变化演示',bg=PAPER,fg=MUTED,font=('Microsoft YaHei UI',9)).pack(anchor='w',pady=(0,7))
+    view.branch=tk.StringVar(value='建议变化')
+    view.branch_box=ttk.Combobox(card,textvariable=view.branch,values=['建议变化','实战首手变化'],state='disabled',width=21);view.branch_box.pack(fill='x',pady=(0,9))
+    row=tk.Frame(card,bg=PAPER);row.pack(fill='x');row.columnconfigure((0,1),weight=1)
+    view.previous=ttk.Button(row,text='上一步',width=9,command=lambda:view.step(-1));view.previous.grid(row=0,column=0,sticky='ew',padx=(0,4))
+    view.next=ttk.Button(row,text='下一步',width=9,command=lambda:view.step(1));view.next.grid(row=0,column=1,sticky='ew',padx=(4,0))
+    review=tk.Frame(side,bg=TINT,padx=16,pady=16);review.pack(fill='x',pady=(14,0))
+    tk.Label(review,text='练习记录',font=('Microsoft YaHei UI',14,'bold'),bg=TINT,fg=INK).pack(anchor='w')
+    tk.Label(review,text='至少隔 24 小时，再独立试一次。\n原题答对不等于学会类似局面。',bg=TINT,fg=MUTED,font=('Microsoft YaHei UI',9),justify='left').pack(anchor='w',pady=10)
+    view.review_button=ttk.Button(review,text='隔日复测',command=view.review);view.review_button.pack(fill='x')
