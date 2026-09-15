@@ -2,12 +2,15 @@
 import queue
 import threading
 import json
+import uuid
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
 from engine import Engine, ROOT, LETTERS, vertex_xy
 from difficulty import LEVELS,DEFAULT
 from bundled_runtime import prepare_bundled_cpu
+from coaching import LessonStore
+from coach_ui import CoachWindow
 
 BG = '#f3f0e9'
 INK = '#22382f'
@@ -18,6 +21,10 @@ class BoardApp:
         self.root = root
         self.engine = None
         self.camera = None
+        self.lesson_store=LessonStore(ROOT/'board'/'learning')
+        self.game_id=uuid.uuid4().hex
+        self.coach_window=None
+        self.recorded_player=None
         self.mode=tk.StringVar(value='本地 PVE');self.pve_running=True
         self.busy = False
         self.closed = False
@@ -63,6 +70,7 @@ class BoardApp:
         self.difficulty_box=ttk.Combobox(header,textvariable=self.difficulty,values=list(LEVELS),state='readonly',width=8)
         self.difficulty_box.pack(side='right',padx=10)
         tk.Label(header,text='AI 难度',bg=BG,fg=INK).pack(side='right')
+        ttk.Button(header,text='每局一题 / 复测',command=self.open_coach).pack(side='right',padx=8)
         self.notice_host=tk.Frame(root,bg=BG);self.notice_host.pack(fill='x')
         self.main_notice=tk.Label(self.notice_host,textvariable=self.status,bg='#e3e7df',fg=INK,font=('Microsoft YaHei UI',10),anchor='w',justify='left',padx=16,pady=6)
         self.main_notice.pack(fill='x',padx=16)
@@ -114,6 +122,28 @@ class BoardApp:
         root.protocol('WM_DELETE_WINDOW',self.close)
         self.poll_timer = root.after(80,self.poll)
         self.run(self.initialize, '正在加载引擎…', initialized=True)
+
+    def record_learning(self, meta):
+        if self.mode.get()!='本地 PVE':return
+        if meta.get('new_pve'):
+            self.game_id=uuid.uuid4().hex;self.recorded_player=None
+        player='w' if self.ai_color()=='b' else 'b'
+        if self.recorded_player and self.recorded_player!=player:
+            return
+        self.recorded_player=player
+        state=dict(history=list(self.history),stones=dict(self.stones),size=self.board_size,
+            setup_stones=dict(self.setup_stones),setup_next=self.setup_next)
+        try:self.lesson_store.record(self.game_id,state,player)
+        except OSError as exc:self.status.set('对局可继续，但自动记录失败：'+str(exc))
+
+    def open_coach(self):
+        if self.coach_window and not self.coach_window.closed:
+            self.coach_window.window.lift();return
+        if self.mode.get()!='本地 PVE':
+            self.status.set('每局一题首版支持本地 PVE，请先切换到本地 PVE。');return
+        self.record_learning({})
+        game=self.lesson_store.read('game-'+self.game_id+'.json')
+        self.coach_window=CoachWindow(self,self.lesson_store,game,ROOT)
 
     def initialize(self):
         config=ROOT/'board'/('runtime.cpu.json' if self.active_compute=='CPU' else 'runtime.json')
@@ -207,6 +237,7 @@ class BoardApp:
                     self.last_input_vertex=self.pending_vertex
                     self.pending_vertex=None
                 self.refresh()
+                self.record_learning(meta)
                 if meta.get('camera') and self.camera and automation_current:
                     self.camera.resume_after_sync()
                 if meta.get('ai') and self.camera and automation_current and self.mode.get()!='本地 PVE':
@@ -457,6 +488,7 @@ class BoardApp:
         except OSError as e:messagebox.showerror('保存失败',str(e),parent=self.root)
 
     def close(self):
+        if self.coach_window and not self.coach_window.closed:self.coach_window.close()
         self.closed=True
         if self.camera:self.camera.close()
         self.root.after_cancel(self.poll_timer)

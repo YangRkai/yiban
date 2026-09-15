@@ -32,3 +32,6 @@ __pycache__/
 
 /build/
 /engine-cpu/
+
+/board/learning/
+/board/coach-analysis.cfg
