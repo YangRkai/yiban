@@ -25,6 +25,7 @@ class OverlayTests(unittest.TestCase):
 
     def test_result_after_release_does_not_show_and_short_click_reuses_it(self):
         o=self.overlay
+        before=self.app.canvas.winfo_height()
         with patch('territory_ui.time.monotonic',return_value=1):o.press()
         o.gesture.tick(1.4);o.changed()
         with patch('territory_ui.time.monotonic',return_value=1.5):o.release()
@@ -32,6 +33,7 @@ class OverlayTests(unittest.TestCase):
         self.assertFalse(o.gesture.visible)
         self.assertEqual(len(self.app.canvas.find_withtag('territory')),0)
         o.toggle();self.assertEqual(len(self.app.canvas.find_withtag('territory')),81)
+        self.root.update_idletasks();self.assertEqual(self.app.canvas.winfo_height(),before)
         o.toggle();self.assertEqual(len(self.app.canvas.find_withtag('territory')),0)
 
     def test_stale_response_ignored_and_undo_requests_new_estimate(self):

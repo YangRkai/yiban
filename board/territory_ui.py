@@ -16,6 +16,8 @@ class TerritoryOverlay:
         self.observed=None;self.worker=None
         self.info=tk.Label(app.board_host,bg='#e7ede5',fg='#243c33',justify='left',anchor='w',
                            font=('Microsoft YaHei UI',9),padx=12,pady=8)
+        # 统计层悬浮在棋盘上方，不参加 pack/grid，避免开关统计时改变棋盘尺寸。
+        self.info.place_forget()
         self.info.bind('<Configure>',lambda e:self.info.configure(wraplength=max(100,e.width-24)))
         button=app.score_button
         button.configure(command=self.toggle)
@@ -50,10 +52,10 @@ class TerritoryOverlay:
         if self.gesture.visible and not self.displayed:self.error_key=None
         self.displayed=self.gesture.visible
         if self.displayed:
-            self.info.pack(side='bottom',fill='x',padx=8,pady=4,before=self.app.canvas)
+            self.info.place(relx=.015,rely=.80,relwidth=.97,anchor='nw')
             self.app.score_button.state(['pressed'])
         else:
-            self.info.pack_forget();self.app.score_button.state(['!pressed'])
+            self.info.place_forget();self.app.score_button.state(['!pressed'])
         self.app.draw()
 
     def poll(self):
